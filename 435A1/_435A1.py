@@ -4,19 +4,29 @@ import queue
 
 class TreeSearchNode:
 
-    parent = None
-    path = []
+    def __init__(self, newParent, newPath: list = [], newState: str = " "):
+        self.__parent = newParent
+        self.__path = newPath
+        self.__state = newState
+        self.__spaceLocation = self.__state.find(" ")
 
-    def __init__(self, newParent: TreeSearchNode = None, newPath: list = []):
-        parent = newParent
-        path = newPath
+    def __eq__(self, other):
+        if isinstance(self, other.__class__):
+            return self.getState() == other.getState()
 
-    def editParent(newParent: TreeSearchNode):
-        parent = newParent
+    def getParent(self):
+        return self.__parent
 
-    def getParent():
-        return parent
+    def getPath(self) ->[]:
+        retpath = self.__path.copy()
+        return retpath
+    
+    def getState(self) -> str:
+        copystate = self.__state
+        return copystate
 
+    def getSpaceLocation(self) -> int:
+        return self.__spaceLocation
 
 
 
@@ -32,15 +42,41 @@ def main():
 
 def bfs(puzzle: str, stats):
     copy = puzzle
-    solved = puzzle == goalState
     visited = {}
     q = queue.Queue(-1)
-
+    q.put(TreeSearchNode(None, [copy], copy))
+    expandNode = q.get()
+    children = []
+    temppath = []
     if isSolveable(puzzle) == False:
         stats[0] = -1
         stats[3] = 0
-    while not(solved):
-        true 
+    while expandNode.getState() != goalState:
+        visited[expandNode.getState()] = [expandNode]
+        children.append(moveSpace(expandNode.getState(), expandNode.getSpaceLocation(), "Up"))
+        children.append(moveSpace(expandNode.getState(), expandNode.getSpaceLocation(), "Down"))
+        children.append(moveSpace(expandNode.getState(), expandNode.getSpaceLocation(), "Left"))
+        children.append(moveSpace(expandNode.getState(), expandNode.getSpaceLocation(), "Right"))
+        for el in children:
+            if el[0] == True:
+                temppath = expandNode.getPath()
+                temppath.append(el[1])
+                if el[1] not in visited:
+                    q.put(TreeSearchNode(expandNode, temppath, el[1]))
+                    stats[1] += 1
+        stats[2] += 1
+        if q._qsize() > stats[3]:
+            stats[3] = q._qsize()
+        expandNode = q.get()
+        children.clear()
+    stats[0] = len(expandNode.getPath()) - 1
+    print("Goal State Found!")
+    print("Path to goal state:")
+    printSolution(expandNode.getPath(), stats)
+    
+
+
+
 
 
 def moveSpace(puzzle: str, idx, dir) -> {bool, str}:
@@ -65,10 +101,10 @@ def swapChars(string: str, idx1, idx2) -> str:
     temp = moved[idx2]
     moved[idx2] = moved[idx1]
     moved[idx1] = temp
-    moved = str(moved) #convert list back into a string
+    moved = "".join(moved)
     return moved
 
-def isSolvable(puzzle: str) -> bool:#check if the given puzzle is solveable
+def isSolveable(puzzle: str) -> bool:#check if the given puzzle is solveable
     intcpy = [0] * 16
     emptyidx = -1
     for i in range(0, len(puzzle)) :
@@ -85,10 +121,13 @@ def isSolvable(puzzle: str) -> bool:#check if the given puzzle is solveable
     inversioncnt = 0
     for a in range(0, len(intcpy)):
         inversioncnt += intcpy[a] - 1
-        if a>0 and intcpy[a] != 1:
-            for num in intcpy[0:a-1]:
-                if num<intcpy[a]:
+        if a>0 and intcpy[a] > 1:
+            for num in intcpy[0:a]:
+                if num<intcpy[a] and num!=0:
                     inversioncnt -= 1
+        elif intcpy[a] == 0:
+            inversioncnt+=1
+
     solveable = False;
     if (0<=emptyidx<=3 or 8<=emptyidx<=11) and inversioncnt % 2 == 1:
         solveable = True
@@ -96,12 +135,20 @@ def isSolvable(puzzle: str) -> bool:#check if the given puzzle is solveable
         solveable = True
     return solveable
 
+def printSolution(path:[str], stats):
+    cnt = 0
+    for el in path:
+        print("State: %d" % (cnt))
+        str = "---------------\n|" + " | ".join(el[0:4]) + "|\n---------------\n|" + " | ".join(el[4:8])
+        str += "|\n---------------\n|" + " | ".join(el[8:12]) + "|\n---------------\n|" + " | ".join(el[12:16]) + "|\n---------------\n"
+        print(str)
+        print("\n_________________________\n")
+        cnt += 1
+    print("Depth: %d  |  Created: %d  |  Expanded: %d  |  Fringe: %d" % (stats[0],stats[1],stats[2],stats[3]))
+
 
         
             
 '''if __name__ == "__main__":
     main()'''
-
-
-
-
+bfs("51246A379 C8DEBF", [0, 0, 0, 1])
