@@ -4,11 +4,12 @@ import queue
 
 class TreeSearchNode:
 
-    def __init__(self, newParent, newPath: list = [], newState: str = " "):
+    def __init__(self, newParent, newPath: list = [], newState: str = " ", newDepth: int = 0):
         self.__parent = newParent
         self.__path = newPath
         self.__state = newState
         self.__spaceLocation = self.__state.find(" ")
+        self.__depth = newDepth
 
     def __eq__(self, other):
         if isinstance(self, other.__class__):
@@ -28,9 +29,13 @@ class TreeSearchNode:
     def getSpaceLocation(self) -> int:
         return self.__spaceLocation
 
+    def getDepth(self) -> int:
+        return self.__depth
 
 
-goalState = "123456789ABCDEF "
+
+goalState1 = "123456789ABCDEF "
+goalState2 = "123456789ABCDFE "
 def main():
     stats = [0, 0, 0, 1] #statistics to be printed at the end. Idx 0 is depth,
     #idx 1 is number created, idx 2 is num expanded, idx 3 is fringe size
@@ -44,38 +49,81 @@ def bfs(puzzle: str, stats):
     copy = puzzle
     visited = {}
     q = queue.Queue(-1)
-    q.put(TreeSearchNode(None, [copy], copy))
+    q.put(TreeSearchNode(None, [copy], copy, 0))
     expandNode = q.get()
     children = []
     temppath = []
-    if isSolveable(puzzle) == False:
-        stats[0] = -1
-        stats[3] = 0
-    while expandNode.getState() != goalState:
+    while expandNode.getState() != goalState1 and expandNode.getState() != goalState2:
         visited[expandNode.getState()] = [expandNode]
-        children.append(moveSpace(expandNode.getState(), expandNode.getSpaceLocation(), "Up"))
+        children.append(moveSpace(expandNode.getState(), expandNode.getSpaceLocation(), "Right"))
         children.append(moveSpace(expandNode.getState(), expandNode.getSpaceLocation(), "Down"))
         children.append(moveSpace(expandNode.getState(), expandNode.getSpaceLocation(), "Left"))
-        children.append(moveSpace(expandNode.getState(), expandNode.getSpaceLocation(), "Right"))
+        children.append(moveSpace(expandNode.getState(), expandNode.getSpaceLocation(), "Up"))
         for el in children:
             if el[0] == True:
                 temppath = expandNode.getPath()
                 temppath.append(el[1])
                 if el[1] not in visited:
-                    q.put(TreeSearchNode(expandNode, temppath, el[1]))
+                    q.put(TreeSearchNode(expandNode, temppath, el[1], expandNode.getDepth() + 1))
                     stats[1] += 1
         stats[2] += 1
         if q._qsize() > stats[3]:
             stats[3] = q._qsize()
         expandNode = q.get()
         children.clear()
-    stats[0] = len(expandNode.getPath()) - 1
+    stats[0] = expandNode.getDepth()
     print("Goal State Found!")
     print("Path to goal state:")
     printSolution(expandNode.getPath(), stats)
-    
 
 
+def dls(puzzle: str, stats, maxdepth: int, limited: bool) -> bool:
+    copy = puzzle
+    visited = {}
+    stack = []
+    stack.append(TreeSearchNode(None, [copy], copy, 0))
+    expandNode = stack.pop()
+    children = []
+    temppath = []
+    searchFailed = False
+    while expandNode.getState() != goalState1 and expandNode.getState() != goalState2 and not searchFailed:
+        visited[expandNode.getState()] = [expandNode.getPath()]
+        nodeState = expandNode.getState()
+        children.append(moveSpace(nodeState, expandNode.getSpaceLocation(), "Up"))
+        children.append(moveSpace(nodeState, expandNode.getSpaceLocation(), "Left"))
+        children.append(moveSpace(nodeState, expandNode.getSpaceLocation(), "Down"))
+        children.append(moveSpace(nodeState, expandNode.getSpaceLocation(), "Right"))
+        for el in children:
+            if el[0] == True:
+                temppath = expandNode.getPath()
+                temppath.append(el[1])
+                if expandNode.getDepth() + 1<=maxdepth:
+                    stack.append(TreeSearchNode(expandNode, temppath, el[1], expandNode.getDepth() + 1))
+                    stats[1] += 1
+        stats[2] += 1
+        if len(stack) > stats[3]:
+            stats[3] = len(stack)
+        if(stack != []):
+            while(expandNode.getState() in visited):
+                expandNode = stack.pop()
+        else:
+            searchFailed = True
+        children.clear()
+    if not searchFailed:
+        stats[0] = expandNode.getDepth()
+        print("Goal State Found!")
+        print("Path to goal state:")
+        printSolution(expandNode.getPath(), stats)
+        return True
+    elif limited:
+        print("Search Failed!")
+    else:
+        return False
+     
+
+
+def dfs(puzzle: str, stats):
+    if dls(puzzle, stats, 20, false)
 
 
 
@@ -137,13 +185,14 @@ def isSolveable(puzzle: str) -> bool:#check if the given puzzle is solveable
 
 def printSolution(path:[str], stats):
     cnt = 0
-    for el in path:
-        print("State: %d" % (cnt))
-        str = "---------------\n|" + " | ".join(el[0:4]) + "|\n---------------\n|" + " | ".join(el[4:8])
-        str += "|\n---------------\n|" + " | ".join(el[8:12]) + "|\n---------------\n|" + " | ".join(el[12:16]) + "|\n---------------\n"
-        print(str)
-        print("\n_________________________\n")
-        cnt += 1
+    if path != []: #check if list is empty, empty lists have a default false value
+        for el in path:
+            print("State: %d" % (cnt))
+            str = "---------------\n|" + " | ".join(el[0:4]) + "|\n---------------\n|" + " | ".join(el[4:8])
+            str += "|\n---------------\n|" + " | ".join(el[8:12]) + "|\n---------------\n|" + " | ".join(el[12:16]) + "|\n---------------\n"
+            print(str)
+            print("\n_________________________\n")
+            cnt += 1
     print("Depth: %d  |  Created: %d  |  Expanded: %d  |  Fringe: %d" % (stats[0],stats[1],stats[2],stats[3]))
 
 
@@ -151,4 +200,6 @@ def printSolution(path:[str], stats):
             
 '''if __name__ == "__main__":
     main()'''
-bfs("51246A379 C8DEBF", [0, 0, 0, 1])
+dls("12345 7896ABDEFC", [0,0,0,1], -1, False)
+
+
