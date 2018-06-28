@@ -1,4 +1,6 @@
 # TCSS435
+
+(open the raw text for correct formatting)
 This project implements mulltiple different search algorithms for a puzzle known as the 15-puzzle problem. The puzzle is a 4x4 grid of
 numbers from 1-9 and letters A-F (and one empty cell). The goal is to get the puzzle from a scrambled state to an ordered state only by
 swapping the position of the empty cell and it's adjacent cells. For example:
