@@ -1,9 +1,21 @@
+#Kyle Beveridge
+#TCSS 435 Assignment 1, 4/15/18
+#This program solves the 15 puzzle problem with
+#multiple different search algorithms
+
+
 import time
 import sys
 import queue
 
+#Tree node class, used to represent a node in the state tree
 class TreeSearchNode:
 
+    #Initialize a TreeSearchNode
+    #in:    newState= the puzzle state of this node
+    #       newDepth = the depth of this node in the tree
+    #       newParent = the parent node of this node
+    #       newPriority = the priority of this node, used by the priority queues in GBFS and A*
     def __init__(self, newState: str = " ", newDepth: int = 0, newParent = None, newPriority:int = 0):
         self.__state = newState
         self.__spaceLocation = self.__state.find(" ")
@@ -15,25 +27,33 @@ class TreeSearchNode:
         self.left = None
         self.up = None
 
+    #support comparison for TreeSearchNode objects
+    #in:    other: the other object to compare with
     def __eq__(self, other):
         if isinstance(self, other.__class__):
             return self.getState() == other.getState()
-
+    
+    #Support less than operations. This is required by priority queues,
+    #and only really has meaning in that context
     def __lt__(self, other):
         return self.priority<other.priority
     
+    #Return the puzzle state of this node
     def getState(self) -> str:
         copystate = self.__state
         return copystate
 
+    #return the location of the space in the puzzle state of this node
     def getSpaceLocation(self) -> int:
         return self.__spaceLocation
 
+    #return the depth of this node
     def getDepth(self) -> int:
         return self.__depth
 
 
 
+#The two valid goal states to reach
 goalState1 = "123456789ABCDEF "
 goalState2 = "123456789ABCDFE "
 
@@ -42,11 +62,34 @@ def main():
     #idx 1 is num expanded, idx 2 is fringe size
     puzzle = sys.argv[1]
     method = sys.argv[2]
+    tree = generateTree(puzzle, 10)#if number of steps to solution is greater than 10, increase this number. Increasing this will increase compute times drastically
     if method == "BFS":
-        bfs(puzzle)
+        bfs(tree, stats)
+    elif method == "DFS":
+        dls(tree, stats, -1, False)
+    elif method == "DLS":
+        dls(tree, stats, int(sys.argv[3]), True)
+    elif method == "GBFS":
+        heuristic = 1
+        if(sys.argv[3] == "h2"):
+            heuristic = 2
+        bfs(tree, stats, True, heuristic, "GBFS")
+    elif method == "AStar":
+        heuristic = 1
+        if(sys.argv[3] == "h2"):
+            heuristic = 2
+        bfs(tree, stats, True, heuristic, "AStar")
     exit()
 
+#Run a breadth first search of the tree. If informed is set to true, this function
+#can also do a GBFS or AStar
+#in:    head: pointer to the head of the tree
+#       stats = array with the statistics of the search
+#       informed = whether an informed search is to be performed or not
+#       heuristic = the heuristic to be used if search is informed
+#       mode = which algorithm to use if search is informed
 def bfs(head, stats, informed: bool = False, heuristic = 1, mode = ""):
+    print("Searching for solution...")
     visited = {}
     children = []
     q = None
@@ -83,17 +126,20 @@ def bfs(head, stats, informed: bool = False, heuristic = 1, mode = ""):
         expandNode = q.get() 
 
         children.clear()
-    print("Solution Path:")
-    print(getSolutionPath(expandNode))
-    print("________________")
-    print("Depth: %d| Created: %d| Expanded: %d| Fringe: %d" % (expandNode.getDepth(), stats[0], stats[1], stats[2]))
+    printSolution(expandNode, stats)
 
+#Run a depth limited search of the tree. If limited is set to false, this function
+#will perform a depth first search
+#in:    head: pointer to the head of the tree
+#       stats = array with the statistics of the search
+#       maxdepth = depth to search to if search is limited
+#       limited = whether or not the depth search is limited
 def dls(head, stats, maxdepth: int, limited: bool = True):
     visited = {}
     stack = []
     expandNode = head
     while expandNode.getState() != goalState1 and expandNode.getState() != goalState2:
-        if not limited or expandNode.getDepth()<=maxdepth:
+        if not limited or expandNode.getDepth()<maxdepth:
             stats[1] += 1
             if expandNode.up != None and expandNode.up.getState() not in visited:
                 stack.append(expandNode.up)
@@ -110,14 +156,9 @@ def dls(head, stats, maxdepth: int, limited: bool = True):
             if len(stack) > stats[2]:
                 stats[2] = len(stack)
         expandNode = stack.pop()
-    print("Solution Path:")
-    print(getSolutionPath(expandNode))
-    print("________________")
-    print("Depth: %d| Created: %d| Expanded: %d| Fringe: %d" % (expandNode.getDepth(), stats[0], stats[1], stats[2]))
+    printSolution(expandNode, stats)
 
-def dfs(head, stats):
-    dls(head, stats, 0, False)
-
+#calculate the priority of a node based on heuristic 1, the number of misplaced puzzle pieces
 def priorityDifference(node):
     state = node.getState()
     priority = 0
@@ -126,6 +167,7 @@ def priorityDifference(node):
             priority += 1
     return priority
 
+#calculate the priority of a node based on heuristic 2, the manhattan distance
 def priorityManhatDist(node):
     endpos = 0
     state = node.getState()
@@ -139,6 +181,13 @@ def priorityManhatDist(node):
             distance += horizontal + abs(hend - hstart)
     return distance
 
+#Make the space move a certain direction
+#in:    puzzle = the state of the puzzle
+#       idx = the index of the whitespace
+#       dir = the direction to move in
+#
+#out: A list with a bool indicating whether the move was successful,
+#and a string with the resulting state
 def moveSpace(puzzle: str, idx, dir) -> {bool, str}:
     result = [False, ""]
     if dir == "Up":
@@ -155,6 +204,11 @@ def moveSpace(puzzle: str, idx, dir) -> {bool, str}:
             result = [True, swapChars(puzzle, idx, idx+1)]
     return result
 
+#swap two characters in a string. Used in moveSpace()
+#in:    string = string to swap characters in
+#       idx1 and idx2 = index of characters to swap
+#
+#out: string result of the swap
 def swapChars(string: str, idx1, idx2) -> str:
     moved = string
     moved = list(moved) #convert the string to list so elements can be swapped
@@ -164,16 +218,28 @@ def swapChars(string: str, idx1, idx2) -> str:
     moved = "".join(moved)
     return moved
 
+#Get the path to the solution from the start state
+#in:    endNode = the node where the goal state was found
+#out: string with the path to the goal state
 def getSolutionPath(endNode) -> str:
     current = endNode
     path = []
     while(current != None):
         path.append(current.getState())
-        current = current.parent
-    path.reverse()
+        current = current.parent #use parent to climb up to top depth
+    path.reverse()#reverse the array so the path is in the start -> end order
     return "\n".join(path)
 
+#print out info about the solution
+def printSolution(node, stats):
+    print("Solution Found! Path:")
+    print(getSolutionPath(node))
+    print("________________")
+    print("Depth: %d| Created: %d| Expanded: %d| Fringe: %d" % (node.getDepth(), stats[0], stats[1], stats[2]))
+
+#Pre-generate the tree, to ensure memory useage is under control
 def generateTree(initialState: str, depth:int):
+    print("Creating Tree...")
     copy = initialState
     expandNode = TreeSearchNode(copy, 0)
     head = expandNode
@@ -200,20 +266,15 @@ def generateTree(initialState: str, depth:int):
             expandNode.up = unode
             expandQueue.append(unode)
         expandNode = expandQueue.pop(0)
+    print("Tree Created!")
     return head
 
 
         
             
-"""if __name__ == "__main__":
-    main()"""
-print("creating tree....")
-tree = generateTree("2 34167859ABDEFC", 10)
-print("tree complete!")
-dls(tree, [0,0,1], -1, False)
-#q = queue.PriorityQueue(-1)
-#q.put(TreeSearchNode("Hello", 0, None, 0))
-#print(q.get().getState())
+if __name__ == "__main__":
+    main()
+
 
 
 
